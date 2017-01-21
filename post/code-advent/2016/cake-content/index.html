@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="p:domain_verify" content="3a02286dee853adf9ebc8b16d3ed2569"/>
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>The Meow Blog</title>
+
+    
+    <link href="/css/bootswatch/flatly/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/css/app.css" rel="stylesheet">
+
+    <link href="/css/highlight/styles/atom-one-dark.css" rel="stylesheet">
+
+    
+    
+
+    
+    <link href="grid.css" rel="stylesheet">
+
+    
+    
+    
+
+    
+    
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="row">
+          <div class="col-md-12">
+            <a href="/"><h1 class="text-city">The Meow Blog</h1></a>
+            <p class="lead">Programing, PHP, CakePHP plugins and scripts</p>
+          </div>
+      </div>
+
+
+<section id="main">
+  <div class="row">
+      <div class="col-md-12">
+       <h2 id="title">Content management with CakePHP</h2>
+            <p>Today I want to show you how easily you can create simple content management system with CakePHP. I want the post can have child posts so we use Tree component from cakePHP.</p>
+
+<p></p>
+
+<h2 id="what-we-will-need">What we will need?</h2>
+
+<p>PHP
+CakePHP
+Compsoer</p>
+
+<h2 id="setup-application">Setup application</h2>
+
+<p>Download CakePHP application, you can use guide on Cakephp page, but I recomend you to use <code>jdmaymeow/app</code> repo. This repository is updated <code>cakephp/app</code> so you dont need edit app.controller. This repoisitory i using in all Code Advent 2016. So lets create our app:</p>
+
+<pre><code class="language-bash">composer create-project --prefer-dist jdmaymeow/app content-management
+</code></pre>
+
+<p>Next we will need <a href="/code-advent/2016/cakephp-user-aauthentication.md">User authentication</a>, what we created in previous post. So intall it with composer</p>
+
+<pre><code class="language-bash">composer require jdmaymeow/cake-auth
+composer require jdmaymeow/cake-utility
+composer require jdmaymeow/cake-taxonomy
+</code></pre>
+
+<p>If you following tutorial you don&rsquo;t need to install items above.</p>
+
+<p>Don&rsquo;t forget to load plugins with <code>bin/cake plugin load</code>. Now we have setup all what we need, and can create content management plugin.</p>
+
+<h2 id="content-management-setup">Content management Setup</h2>
+
+<p>Create plugin</p>
+
+<pre><code class="language-bash">bin/cake bake plugin CakeContent -f
+</code></pre>
+
+<p>This will create your new plugin and setup bootstrap for you.</p>
+
+<h2 id="create-tables">Create Tables</h2>
+
+<pre><code>bin/cake bake migration CreateNodes title:string body:text user_id:integer category_id:integer active:boolean published:boolean parent_id:integer lft:integer rght:integer created modified -p CakeContent
+bin/cake migrations migrate -p CakeContent
+</code></pre>
+
+<p>Tables are created and now you can create models, controllers and views. <code>bin/cake bake all Nodes -p CakeContent</code></p>
+      </div>
+  </div>
+  <div class="row">
+      <div class="col-md-12" id="tags">
+          <h4>Tagged with</h4>
+          
+              <a href="/tags/cakephp"><label class="label label-info">cakephp</label></a>
+          
+              <a href="/tags/codeadvent"><label class="label label-info">codeadvent</label></a>
+          
+              <a href="/tags/cms"><label class="label label-info">CMS</label></a>
+          
+     </div>
+ </div>
+</section>
+
+<div class="row"><div class="col-md-12" id="disqus_thread"></div></div>
+<script>
+
+
+
+
+
+(function() { 
+var d = document, s = d.createElement('script');
+s.src = '//jdmaymeow-com.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+    </div> 
+
+
+    
+    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-88442341-2', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+  </body>
+</html>
+

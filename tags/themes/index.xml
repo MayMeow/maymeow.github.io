@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>The Meow Blog</title>
+    <link>https://jdmaymeow.com/tags/themes/index.xml</link>
+    <description>Recent content on The Meow Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <atom:link href="https://jdmaymeow.com/tags/themes/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Creating administration</title>
+      <link>https://jdmaymeow.com/post/code-advent/2016/admin-section/</link>
+      <pubDate>Wed, 21 Dec 2016 16:46:43 +0100</pubDate>
+      
+      <guid>https://jdmaymeow.com/post/code-advent/2016/admin-section/</guid>
+      <description>&lt;p&gt;All CMS will need public section what can be accessed without credentials and allow users to see content. 2nd section can be accessed only with right username and password and allow you to edit content.&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;
+
+&lt;p&gt;Our CMS now allow only see content without credentials but using only one template and this can be problem with theming. I want have one index page for public and one for admin. So let&amp;rsquo;s upgrade our cms with admin prefix&amp;hellip;&lt;/p&gt;
+
+&lt;h2 id=&#34;routes&#34;&gt;Routes&lt;/h2&gt;
+
+&lt;p&gt;1st update routes in your plugin, after change it will look like this&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;Router::plugin(
+    &#39;CakeContent&#39;,
+    [&#39;path&#39; =&amp;gt; &#39;/cake-content&#39;],
+    function (RouteBuilder $routes) {
+        $routes-&amp;gt;fallbacks(DashedRoute::class);
+        // I added following lines to ensure admin prefix working
+        $routes-&amp;gt;prefix(&#39;admin&#39;, function ($routes) {
+            $routes-&amp;gt;fallbacks(DashedRoute::class);
+        });
+    }
+);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;controllers-and-templates&#34;&gt;Controllers and templates&lt;/h2&gt;
+
+&lt;p&gt;Let&amp;rsquo;s say we need create new Nodes controller with prefix admin. With bake it&amp;rsquo;s easy&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake controller Nodes --prefix admin -p CakeContent
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;this have created new folder &lt;code&gt;src/controller/admin&lt;/code&gt; with &lt;code&gt;NodesController.php&lt;/code&gt;. Now we have 2x NodesController 1 for public and 1 for admin, but all functions are twice, so update our app and create AbstractNodesController where we will have all functions needed for both controllers.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;cp NodesController.php AbstractNodesController.php
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now remove all functions from both Nodes controller and extend newly created AbstractNodesController, they will looks like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;class NodesController extends AbstractNodesController
+{
+
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can move add, edit and delete functions from AbstractNodesController to NodesController in admin folder because this functions are not needed in public NodesController. Now we can create theme for public Templates and still will have admin with standard templates.&lt;/p&gt;
+
+&lt;p&gt;Ok last what we need is create templates. You can copy your existing templates to admin folder or bake new one:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake template Nodes --prefix admin -p CakeContent
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Easy or no? Do this with all controllers where you want have Admin section.&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>The Meow Blog</title>
+    <link>https://jdmaymeow.com/tags/cakephp-plugin/index.xml</link>
+    <description>Recent content on The Meow Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <atom:link href="https://jdmaymeow.com/tags/cakephp-plugin/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Link shortener</title>
+      <link>https://jdmaymeow.com/post/code-advent/2016/link-shortener/</link>
+      <pubDate>Mon, 12 Dec 2016 18:05:51 +0100</pubDate>
+      
+      <guid>https://jdmaymeow.com/post/code-advent/2016/link-shortener/</guid>
+      <description>&lt;p&gt;Hello in this post I want to show you how you can create link shortener.&lt;/p&gt;
+
+&lt;p&gt;All source code will be awailable at my GitHub.
+&lt;/p&gt;
+
+&lt;h2 id=&#34;setup&#34;&gt;Setup&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;PHP&lt;/li&gt;
+&lt;li&gt;Access to database (or installed database server)&lt;/li&gt;
+&lt;li&gt;compsoer&lt;/li&gt;
+&lt;li&gt;CakePHP&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;baking-application&#34;&gt;Baking application&lt;/h2&gt;
+
+&lt;p&gt;First we have to install CakePHP skeleton.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;composer create-project --prefer-dist cakephp/app link_shortener
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This command download newest version of cake php install dependencies for it. You can try if your app is running with &lt;code&gt;bin/cake server&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h2 id=&#34;database-setup&#34;&gt;Database setup&lt;/h2&gt;
+
+&lt;p&gt;In &lt;code&gt;config/app.php&lt;/code&gt; scroll to Datasources and edit &lt;strong&gt;&lt;em&gt;default&lt;/em&gt;&lt;/strong&gt; one with your credentials.&lt;/p&gt;
+
+&lt;h2 id=&#34;creating-initial-database-tables&#34;&gt;Creating initial database tables&lt;/h2&gt;
+
+&lt;p&gt;I this applicaiton I want have users, links and link catedogies. Lets create them&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake migration CreateLinks name:string url:string shortened:string views:integer user_id:integer category_id:integer created modified
+bin/cake bake migrations CreateUsers name:string username:string email:string password:string created modified
+bin/cake bake migrations CreateCategories name:string description:string created modified
+
+bin/cake migrations migrate
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;First 4 commands create migrations in your &lt;code&gt;config/Migrations&lt;/code&gt; folder where you can edit theme if you need. Last one will update database with your migrations.&lt;/p&gt;
+
+&lt;h2 id=&#34;baking-views-and-more&#34;&gt;Baking views and more&lt;/h2&gt;
+
+&lt;p&gt;Now when we have database and running cakephp application we can create Models, views and controllers for our application. In CakePHP this will be easy with CLI.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake all Links
+bin/cake bake all Users
+bin/cake bake all Categories
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;tadaaa &amp;hellip; whe have completed our application ehm&amp;hellip; we have completed skeleton of our application. Now we can add functioanlity. This is one of awesome features of CakePHP because you can concentrate to making our application without creating functions in controller for viewing, edit, delete and index pages. If dont need some of them you can delete those.&lt;/p&gt;
+
+&lt;h2 id=&#34;user-authentication&#34;&gt;User authentication&lt;/h2&gt;
+
+&lt;p&gt;More on how to setup user authentication you can read at Cookbook cakephp. Setup in this app is the same so i don&amp;rsquo;t write about it here.&lt;/p&gt;
+
+&lt;h2 id=&#34;link-shortening&#34;&gt;Link Shortening&lt;/h2&gt;
+
+&lt;p&gt;In this stage our app can manage (create, edit, delete) and view any of our model (users, links and categories). But main feature is missing - Link Shortening. Lets create it. I use for this purpose another cool feature named Component. Components are small packages of logic which can be shared between controllers.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake component Shortable
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;After you hit enter you can find this in &lt;code&gt;src/Controller/Component/ShortableComponent.php&lt;/code&gt; &lt;a href=&#34;https://github.com/jdmaymeow/ls_cake/blob/master/src/Controller/Component/ShortableComponent.php&#34;&gt;Complete File&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This component will create shorten format from link ID with characters from given codebase&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;protected $_defaultConfig = [
+    //what characters we want to use  for encoding ID to string
+    // Ill use all alphabet and numbers
+    &#39;codeset&#39; =&amp;gt; &#39;0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWVXYZ&#39;
+];
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Function for shortening number looks like this&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;private function _shortenNumber($number = null)
+{
+    //load configuration
+    $config = $this-&amp;gt;config();
+    $codeset = $config[&#39;codeset&#39;];
+    // get length of our codeset
+    $base = strlen($codeset);
+    $n = $number; // given link_ID
+    //shortened string
+    $shortened = &#39;&#39;;
+    while ($n &amp;gt; 0) {
+        $shortened = substr($codeset, ($n % $base), 1) . $shortened;
+        $n = floor($n/$base);
+    }
+    return $shortened;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now go to &lt;code&gt;src/Controller/LinksController.php&lt;/code&gt; and edit add function with following code.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;$link-&amp;gt;shortened = $this-&amp;gt;Shortable-&amp;gt;short($link-&amp;gt;id);
+$this-&amp;gt;Links-&amp;gt;save($link);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Every time when you create new link application will read ID of newly created link and update database with shortened string.&lt;/p&gt;
+
+&lt;h2 id=&#34;link-redirecting&#34;&gt;Link redirecting&lt;/h2&gt;
+
+&lt;p&gt;OK our application is almost done. Following function will read shortened string and redirect visitor to webpage.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;public function go($shortenedID = null)
+{
+   //we need find only one item
+   $link = $this-&amp;gt;Links-&amp;gt;findByShortened($shortenedID)-&amp;gt;first();
+   $this-&amp;gt;addCount($link-&amp;gt;id);
+   $this-&amp;gt;redirect($link-&amp;gt;url);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can go now to &lt;code&gt;http://localhost:8765/links/go/&amp;lt;string&amp;gt;&lt;/code&gt;. Maybe you asinkg What shortened link?? It&amp;rsquo;s long. So add new route in &lt;code&gt;Config/routes.php&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;//use domain.name/go/x instead of domain.name/links/go/x
+$routes-&amp;gt;connect(&#39;/go/*&#39;, [&#39;controller&#39; =&amp;gt; &#39;Links&#39;, &#39;action&#39; =&amp;gt; &#39;go&#39;]);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now your links looks like &lt;code&gt;http://localhost/go/&amp;lt;string&amp;gt;&lt;/code&gt; Better, isn&amp;rsquo;t it?&lt;/p&gt;
+
+&lt;h2 id=&#34;bonus-views-count&#34;&gt;Bonus views count&lt;/h2&gt;
+
+&lt;p&gt;If your are curious why I use  &lt;code&gt;$this-&amp;gt;addCount($link-&amp;gt;id);&lt;/code&gt; it go function, this will update view count for link everytime someone open link for redirection. Function looks like&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;protected function addCount($id = null)
+{
+    //Not shortened id
+    $link = $this-&amp;gt;Links-&amp;gt;get($id);
+    //$link-&amp;gt;views = $link-&amp;gt;views;
+    //OR make it Simpler
+    $link-&amp;gt;views++;
+    if ($this-&amp;gt;Links-&amp;gt;save($link)) {
+        return true;
+    }
+    return false;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you don&amp;rsquo;t want to write your own applicaiton all soucre codes are located at &lt;a href=&#34;https://github.com/jdmaymeow/ls_cake&#34;&gt;GitHub&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;What next? Be sure to follow twitter &lt;a href=&#34;https://twitter.com/jdmaymeow&#34;&gt;@jdmaymeow&lt;/a&gt;. Thanks for reading and come back here for more tutorials.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>CakePHP User authentication in few minutes</title>
+      <link>https://jdmaymeow.com/post/code-advent/2016/cakephp-user-authentication/</link>
+      <pubDate>Sat, 03 Dec 2016 14:21:08 +0100</pubDate>
+      
+      <guid>https://jdmaymeow.com/post/code-advent/2016/cakephp-user-authentication/</guid>
+      <description>&lt;p&gt;Almost every page you create will need user authentication. Let&amp;rsquo;s make simple authentication which will have users and groups. For this project ill create plugin because it can be used in many other projects.
+&lt;/p&gt;
+
+&lt;h2 id=&#34;what-we-will-create&#34;&gt;What we will create&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Users and groups tables&lt;/li&gt;
+&lt;li&gt;Routing for users login and logout&lt;/li&gt;
+&lt;li&gt;Simple configuration&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;environment-setup&#34;&gt;Environment setup&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;PHP&lt;/li&gt;
+&lt;li&gt;Composer&lt;/li&gt;
+&lt;li&gt;Database server (mysql or postgresql)&lt;/li&gt;
+&lt;li&gt;CakePHP&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;install-application&#34;&gt;Install application&lt;/h2&gt;
+
+&lt;p&gt;First download CakePHP &lt;code&gt;composer self-update &amp;amp;&amp;amp; composer create-project --prefer-dist cakephp/app code-advent&lt;/code&gt;. Once download is finished you will have latest version of cakephp. You can try to run it with &lt;code&gt;bin/cake server&lt;/code&gt;. Ok now go to your app folder: &lt;code&gt;cd code-advent&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h3 id=&#34;plugin&#34;&gt;Plugin&lt;/h3&gt;
+
+&lt;p&gt;Plugins are packages of models, controllers and views. Other users can use this packages in their applications. So we create our package for user authentication. This will contain users with roles. Run following command&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake plugin CakeAuth
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Our plugin will be available in plugins folder. Now create migrations for users database.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;bin/cake bake migration CreateUsers username:string password:string role:string verified:boolean created modified -p CakeAuth
+bin/cake bake all Users -p CakeAuth
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Open &lt;code&gt;UsersTable.php&lt;/code&gt; and add following rows to validator for roles.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-PHP&#34;&gt;-&amp;gt;add(&#39;role&#39;, &#39;inList&#39;, [
+    &#39;rule&#39; =&amp;gt; [&#39;inList&#39; =&amp;gt; [&#39;admin&#39;, &#39;author&#39;]],
+    &#39;message&#39; =&amp;gt; &#39;Please enter a valid role&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This rows will ensure only admin and author words can be used in our roles field when we create new user.&lt;/p&gt;
+
+&lt;p&gt;When you try add user and then navigate to users index or view user, you will see password in plain text and this is dangerous. You have never store password in plain text, so lets fix it. Go to plugin model entity and edit &lt;code&gt;User.php&lt;/code&gt;. Add following rows to it&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;protected function _setPassword($password)
+    {
+        return (new DefaultPasswordHasher)-&amp;gt;hash($password);
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This function will return hash of your plugin. So you have done your auth plugin and now you need setup application to use it.&lt;/p&gt;
+
+&lt;h2 id=&#34;setup-application&#34;&gt;Setup Application&lt;/h2&gt;
+
+&lt;p&gt;Go to your application src and edit &lt;code&gt;AppController.php&lt;/code&gt;. Add following rows to initialize function:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;$this-&amp;gt;loadComponent(&#39;Auth&#39;, [
+            &#39;authorize&#39; =&amp;gt; [&#39;Controller&#39;], // Added this line to ensure authorization
+            &#39;loginRedirect&#39; =&amp;gt; [
+                &#39;controller&#39; =&amp;gt; &#39;Links&#39;,
+                &#39;action&#39; =&amp;gt; &#39;index&#39;
+            ],
+            &#39;logoutRedirect&#39; =&amp;gt; [
+                &#39;controller&#39; =&amp;gt; &#39;Users&#39;,
+                &#39;action&#39; =&amp;gt; &#39;login&#39;,
+                &#39;home&#39;
+            ]
+        ]);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;and after initialize function add rows:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;public function beforeFilter(Event $event)
+    {
+        // this are allowed action all other actions cause users must login before to see them
+        $this-&amp;gt;Auth-&amp;gt;allow([&#39;index&#39;, &#39;view&#39;, &#39;display&#39;]);
+    }
+
+public function isAuthorized($user)
+    {
+        // Admin can access every action
+        if (isset($user[&#39;role&#39;]) &amp;amp;&amp;amp; $user[&#39;role&#39;] === &#39;admin&#39;) {
+            return true;
+        }
+
+        // Default deny
+        return false;
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As you see there, add is not in allowed action. So you can&amp;rsquo;t create new users, to fix this edit your &lt;code&gt;UsersController&lt;/code&gt; and add &lt;code&gt;beforeFilter&lt;/code&gt; function with following row:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;$this-&amp;gt;Auth-&amp;gt;allow([&#39;add&#39;]);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&#34;routes&#34;&gt;Routes&lt;/h2&gt;
+
+&lt;p&gt;when you navigate to not allowed action you have to see login form but CakePHP will return error because don&amp;rsquo;t know path to &lt;code&gt;users/login&lt;/code&gt;, our login is on address &lt;code&gt;cake-auth/users/login&lt;/code&gt;. This can be fixed with add new routes to your &lt;code&gt;config/routes.php&lt;/code&gt; file in plugin folder: (append to your file)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;Router::scope(&#39;/&#39;, function (RouteBuilder $routes) {
+    $routes-&amp;gt;connect(&#39;/users/index&#39;, [&#39;plugin&#39; =&amp;gt; &#39;CakeAuth&#39;, &#39;controller&#39; =&amp;gt; &#39;Users&#39;, &#39;action&#39; =&amp;gt; &#39;index&#39;]);
+    $routes-&amp;gt;connect(&#39;/users/login&#39;, [&#39;plugin&#39; =&amp;gt; &#39;CakeAuth&#39;, &#39;controller&#39; =&amp;gt; &#39;Users&#39;, &#39;action&#39; =&amp;gt; &#39;login&#39;]);
+    $routes-&amp;gt;connect(&#39;/users/logout&#39;, [&#39;plugin&#39; =&amp;gt; &#39;CakeAuth&#39;, &#39;controller&#39; =&amp;gt; &#39;Users&#39;, &#39;action&#39; =&amp;gt; &#39;logout&#39;]);
+});
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So, your application is protected with user authentication. They can access only allowed actions (index, view, display), other actions are forbidden and requre users to have username and password. You can add more functionality like, email activation, or password reset.&lt;/p&gt;
+
+&lt;p&gt;For those who was lazy to code there is a &lt;a href=&#34;https://github.com/jdmaymeow/cake-auth&#34;&gt;Github&lt;/a&gt; repository, or if you have another application made with CakePHP 3.x you can istall it with &lt;code&gt;composer require jdmaymeow/cake-auth&lt;/code&gt; and update AppController.&lt;/p&gt;
+
+&lt;p&gt;What next? Be sure to follow twitter &lt;a href=&#34;https://twitter.com/jdmaymeow&#34;&gt;@jdmaymeow&lt;/a&gt;. Thanks for reading and come back here for more tutorials.&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>

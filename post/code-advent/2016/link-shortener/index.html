@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="p:domain_verify" content="3a02286dee853adf9ebc8b16d3ed2569"/>
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>The Meow Blog</title>
+
+    
+    <link href="/css/bootswatch/flatly/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/css/app.css" rel="stylesheet">
+
+    <link href="/css/highlight/styles/atom-one-dark.css" rel="stylesheet">
+
+    
+    
+
+    
+    <link href="grid.css" rel="stylesheet">
+
+    
+    
+    
+
+    
+    
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="row">
+          <div class="col-md-12">
+            <a href="/"><h1 class="text-city">The Meow Blog</h1></a>
+            <p class="lead">Programing, PHP, CakePHP plugins and scripts</p>
+          </div>
+      </div>
+
+
+<section id="main">
+  <div class="row">
+      <div class="col-md-12">
+       <h2 id="title">Link shortener</h2>
+            <p>Hello in this post I want to show you how you can create link shortener.</p>
+
+<p>All source code will be awailable at my GitHub.
+</p>
+
+<h2 id="setup">Setup</h2>
+
+<ul>
+<li>PHP</li>
+<li>Access to database (or installed database server)</li>
+<li>compsoer</li>
+<li>CakePHP</li>
+</ul>
+
+<h2 id="baking-application">Baking application</h2>
+
+<p>First we have to install CakePHP skeleton.</p>
+
+<pre><code>composer create-project --prefer-dist cakephp/app link_shortener
+</code></pre>
+
+<p>This command download newest version of cake php install dependencies for it. You can try if your app is running with <code>bin/cake server</code>.</p>
+
+<h2 id="database-setup">Database setup</h2>
+
+<p>In <code>config/app.php</code> scroll to Datasources and edit <strong><em>default</em></strong> one with your credentials.</p>
+
+<h2 id="creating-initial-database-tables">Creating initial database tables</h2>
+
+<p>I this applicaiton I want have users, links and link catedogies. Lets create them</p>
+
+<pre><code class="language-bash">bin/cake bake migration CreateLinks name:string url:string shortened:string views:integer user_id:integer category_id:integer created modified
+bin/cake bake migrations CreateUsers name:string username:string email:string password:string created modified
+bin/cake bake migrations CreateCategories name:string description:string created modified
+
+bin/cake migrations migrate
+</code></pre>
+
+<p>First 4 commands create migrations in your <code>config/Migrations</code> folder where you can edit theme if you need. Last one will update database with your migrations.</p>
+
+<h2 id="baking-views-and-more">Baking views and more</h2>
+
+<p>Now when we have database and running cakephp application we can create Models, views and controllers for our application. In CakePHP this will be easy with CLI.</p>
+
+<pre><code class="language-bash">bin/cake bake all Links
+bin/cake bake all Users
+bin/cake bake all Categories
+</code></pre>
+
+<p>tadaaa &hellip; whe have completed our application ehm&hellip; we have completed skeleton of our application. Now we can add functioanlity. This is one of awesome features of CakePHP because you can concentrate to making our application without creating functions in controller for viewing, edit, delete and index pages. If dont need some of them you can delete those.</p>
+
+<h2 id="user-authentication">User authentication</h2>
+
+<p>More on how to setup user authentication you can read at Cookbook cakephp. Setup in this app is the same so i don&rsquo;t write about it here.</p>
+
+<h2 id="link-shortening">Link Shortening</h2>
+
+<p>In this stage our app can manage (create, edit, delete) and view any of our model (users, links and categories). But main feature is missing - Link Shortening. Lets create it. I use for this purpose another cool feature named Component. Components are small packages of logic which can be shared between controllers.</p>
+
+<pre><code class="language-bash">bin/cake bake component Shortable
+</code></pre>
+
+<p>After you hit enter you can find this in <code>src/Controller/Component/ShortableComponent.php</code> <a href="https://github.com/jdmaymeow/ls_cake/blob/master/src/Controller/Component/ShortableComponent.php">Complete File</a></p>
+
+<p>This component will create shorten format from link ID with characters from given codebase</p>
+
+<pre><code class="language-php">protected $_defaultConfig = [
+    //what characters we want to use  for encoding ID to string
+    // Ill use all alphabet and numbers
+    'codeset' =&gt; '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWVXYZ'
+];
+</code></pre>
+
+<p>Function for shortening number looks like this</p>
+
+<pre><code class="language-php">private function _shortenNumber($number = null)
+{
+    //load configuration
+    $config = $this-&gt;config();
+    $codeset = $config['codeset'];
+    // get length of our codeset
+    $base = strlen($codeset);
+    $n = $number; // given link_ID
+    //shortened string
+    $shortened = '';
+    while ($n &gt; 0) {
+        $shortened = substr($codeset, ($n % $base), 1) . $shortened;
+        $n = floor($n/$base);
+    }
+    return $shortened;
+}
+</code></pre>
+
+<p>Now go to <code>src/Controller/LinksController.php</code> and edit add function with following code.</p>
+
+<pre><code class="language-php">$link-&gt;shortened = $this-&gt;Shortable-&gt;short($link-&gt;id);
+$this-&gt;Links-&gt;save($link);
+</code></pre>
+
+<p>Every time when you create new link application will read ID of newly created link and update database with shortened string.</p>
+
+<h2 id="link-redirecting">Link redirecting</h2>
+
+<p>OK our application is almost done. Following function will read shortened string and redirect visitor to webpage.</p>
+
+<pre><code class="language-php">public function go($shortenedID = null)
+{
+   //we need find only one item
+   $link = $this-&gt;Links-&gt;findByShortened($shortenedID)-&gt;first();
+   $this-&gt;addCount($link-&gt;id);
+   $this-&gt;redirect($link-&gt;url);
+}
+</code></pre>
+
+<p>You can go now to <code>http://localhost:8765/links/go/&lt;string&gt;</code>. Maybe you asinkg What shortened link?? It&rsquo;s long. So add new route in <code>Config/routes.php</code></p>
+
+<pre><code class="language-php">//use domain.name/go/x instead of domain.name/links/go/x
+$routes-&gt;connect('/go/*', ['controller' =&gt; 'Links', 'action' =&gt; 'go']);
+</code></pre>
+
+<p>Now your links looks like <code>http://localhost/go/&lt;string&gt;</code> Better, isn&rsquo;t it?</p>
+
+<h2 id="bonus-views-count">Bonus views count</h2>
+
+<p>If your are curious why I use  <code>$this-&gt;addCount($link-&gt;id);</code> it go function, this will update view count for link everytime someone open link for redirection. Function looks like</p>
+
+<pre><code class="language-php">protected function addCount($id = null)
+{
+    //Not shortened id
+    $link = $this-&gt;Links-&gt;get($id);
+    //$link-&gt;views = $link-&gt;views;
+    //OR make it Simpler
+    $link-&gt;views++;
+    if ($this-&gt;Links-&gt;save($link)) {
+        return true;
+    }
+    return false;
+}
+</code></pre>
+
+<p>If you don&rsquo;t want to write your own applicaiton all soucre codes are located at <a href="https://github.com/jdmaymeow/ls_cake">GitHub</a>.</p>
+
+<p>What next? Be sure to follow twitter <a href="https://twitter.com/jdmaymeow">@jdmaymeow</a>. Thanks for reading and come back here for more tutorials.</p>
+      </div>
+  </div>
+  <div class="row">
+      <div class="col-md-12" id="tags">
+          <h4>Tagged with</h4>
+          
+              <a href="/tags/codeadvent"><label class="label label-info">codeadvent</label></a>
+          
+              <a href="/tags/php"><label class="label label-info">php</label></a>
+          
+              <a href="/tags/cakephp"><label class="label label-info">cakephp</label></a>
+          
+              <a href="/tags/codeadvent2016"><label class="label label-info">codeadvent2016</label></a>
+          
+              <a href="/tags/cakephp-plugin"><label class="label label-info">cakephp plugin</label></a>
+          
+              <a href="/tags/migrations"><label class="label label-info">migrations</label></a>
+          
+     </div>
+ </div>
+</section>
+
+<div class="row"><div class="col-md-12" id="disqus_thread"></div></div>
+<script>
+
+
+
+
+
+(function() { 
+var d = document, s = d.createElement('script');
+s.src = '//jdmaymeow-com.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+    </div> 
+
+
+    
+    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-88442341-2', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+  </body>
+</html>
+

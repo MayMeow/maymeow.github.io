@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>https://jdmaymeow.com/</loc>
+    <lastmod>2016-12-21T16:46:43+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/admin-section/</loc>
+    <lastmod>2016-12-21T16:46:43+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/email-password-reset/</loc>
+    <lastmod>2016-12-20T13:19:16+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/about/</loc>
+    <lastmod>2016-12-20T08:34:04+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/link-shortener/</loc>
+    <lastmod>2016-12-12T18:05:51+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/taxonomy-with-cakephp/</loc>
+    <lastmod>2016-12-06T15:22:42+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/cake-content/</loc>
+    <lastmod>2016-12-05T15:10:07+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/cakephp-user-authentication/</loc>
+    <lastmod>2016-12-03T14:21:08+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://jdmaymeow.com/post/code-advent/2016/simple-api-in-php/</loc>
+    <lastmod>2016-12-01T15:19:16+01:00</lastmod>
+  </url>
+  
+</urlset>

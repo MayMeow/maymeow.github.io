@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="p:domain_verify" content="3a02286dee853adf9ebc8b16d3ed2569"/>
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>The Meow Blog</title>
+
+    
+    <link href="/css/bootswatch/flatly/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/css/app.css" rel="stylesheet">
+
+    <link href="/css/highlight/styles/atom-one-dark.css" rel="stylesheet">
+
+    
+    
+
+    
+    <link href="grid.css" rel="stylesheet">
+
+    
+    
+    
+
+    
+    
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="row">
+          <div class="col-md-12">
+            <a href="/"><h1 class="text-city">The Meow Blog</h1></a>
+            <p class="lead">Programing, PHP, CakePHP plugins and scripts</p>
+          </div>
+      </div>
+
+
+<section id="main">
+  <div class="row">
+      <div class="col-md-12">
+       <h2 id="title">CakePHP User authentication in few minutes</h2>
+            <p>Almost every page you create will need user authentication. Let&rsquo;s make simple authentication which will have users and groups. For this project ill create plugin because it can be used in many other projects.
+</p>
+
+<h2 id="what-we-will-create">What we will create</h2>
+
+<ul>
+<li>Users and groups tables</li>
+<li>Routing for users login and logout</li>
+<li>Simple configuration</li>
+</ul>
+
+<h2 id="environment-setup">Environment setup</h2>
+
+<ul>
+<li>PHP</li>
+<li>Composer</li>
+<li>Database server (mysql or postgresql)</li>
+<li>CakePHP</li>
+</ul>
+
+<h2 id="install-application">Install application</h2>
+
+<p>First download CakePHP <code>composer self-update &amp;&amp; composer create-project --prefer-dist cakephp/app code-advent</code>. Once download is finished you will have latest version of cakephp. You can try to run it with <code>bin/cake server</code>. Ok now go to your app folder: <code>cd code-advent</code>.</p>
+
+<h3 id="plugin">Plugin</h3>
+
+<p>Plugins are packages of models, controllers and views. Other users can use this packages in their applications. So we create our package for user authentication. This will contain users with roles. Run following command</p>
+
+<pre><code class="language-bash">bin/cake bake plugin CakeAuth
+</code></pre>
+
+<p>Our plugin will be available in plugins folder. Now create migrations for users database.</p>
+
+<pre><code class="language-bash">bin/cake bake migration CreateUsers username:string password:string role:string verified:boolean created modified -p CakeAuth
+bin/cake bake all Users -p CakeAuth
+</code></pre>
+
+<p>Open <code>UsersTable.php</code> and add following rows to validator for roles.</p>
+
+<pre><code class="language-PHP">-&gt;add('role', 'inList', [
+    'rule' =&gt; ['inList' =&gt; ['admin', 'author']],
+    'message' =&gt; 'Please enter a valid role'
+</code></pre>
+
+<p>This rows will ensure only admin and author words can be used in our roles field when we create new user.</p>
+
+<p>When you try add user and then navigate to users index or view user, you will see password in plain text and this is dangerous. You have never store password in plain text, so lets fix it. Go to plugin model entity and edit <code>User.php</code>. Add following rows to it</p>
+
+<pre><code class="language-php">protected function _setPassword($password)
+    {
+        return (new DefaultPasswordHasher)-&gt;hash($password);
+    }
+</code></pre>
+
+<p>This function will return hash of your plugin. So you have done your auth plugin and now you need setup application to use it.</p>
+
+<h2 id="setup-application">Setup Application</h2>
+
+<p>Go to your application src and edit <code>AppController.php</code>. Add following rows to initialize function:</p>
+
+<pre><code class="language-php">$this-&gt;loadComponent('Auth', [
+            'authorize' =&gt; ['Controller'], // Added this line to ensure authorization
+            'loginRedirect' =&gt; [
+                'controller' =&gt; 'Links',
+                'action' =&gt; 'index'
+            ],
+            'logoutRedirect' =&gt; [
+                'controller' =&gt; 'Users',
+                'action' =&gt; 'login',
+                'home'
+            ]
+        ]);
+</code></pre>
+
+<p>and after initialize function add rows:</p>
+
+<pre><code class="language-php">public function beforeFilter(Event $event)
+    {
+        // this are allowed action all other actions cause users must login before to see them
+        $this-&gt;Auth-&gt;allow(['index', 'view', 'display']);
+    }
+
+public function isAuthorized($user)
+    {
+        // Admin can access every action
+        if (isset($user['role']) &amp;&amp; $user['role'] === 'admin') {
+            return true;
+        }
+
+        // Default deny
+        return false;
+    }
+</code></pre>
+
+<p>As you see there, add is not in allowed action. So you can&rsquo;t create new users, to fix this edit your <code>UsersController</code> and add <code>beforeFilter</code> function with following row:</p>
+
+<pre><code class="language-php">$this-&gt;Auth-&gt;allow(['add']);
+</code></pre>
+
+<h2 id="routes">Routes</h2>
+
+<p>when you navigate to not allowed action you have to see login form but CakePHP will return error because don&rsquo;t know path to <code>users/login</code>, our login is on address <code>cake-auth/users/login</code>. This can be fixed with add new routes to your <code>config/routes.php</code> file in plugin folder: (append to your file)</p>
+
+<pre><code class="language-php">Router::scope('/', function (RouteBuilder $routes) {
+    $routes-&gt;connect('/users/index', ['plugin' =&gt; 'CakeAuth', 'controller' =&gt; 'Users', 'action' =&gt; 'index']);
+    $routes-&gt;connect('/users/login', ['plugin' =&gt; 'CakeAuth', 'controller' =&gt; 'Users', 'action' =&gt; 'login']);
+    $routes-&gt;connect('/users/logout', ['plugin' =&gt; 'CakeAuth', 'controller' =&gt; 'Users', 'action' =&gt; 'logout']);
+});
+</code></pre>
+
+<p>So, your application is protected with user authentication. They can access only allowed actions (index, view, display), other actions are forbidden and requre users to have username and password. You can add more functionality like, email activation, or password reset.</p>
+
+<p>For those who was lazy to code there is a <a href="https://github.com/jdmaymeow/cake-auth">Github</a> repository, or if you have another application made with CakePHP 3.x you can istall it with <code>composer require jdmaymeow/cake-auth</code> and update AppController.</p>
+
+<p>What next? Be sure to follow twitter <a href="https://twitter.com/jdmaymeow">@jdmaymeow</a>. Thanks for reading and come back here for more tutorials.</p>
+      </div>
+  </div>
+  <div class="row">
+      <div class="col-md-12" id="tags">
+          <h4>Tagged with</h4>
+          
+              <a href="/tags/codeadvent"><label class="label label-info">codeadvent</label></a>
+          
+              <a href="/tags/php"><label class="label label-info">php</label></a>
+          
+              <a href="/tags/cakephp"><label class="label label-info">cakephp</label></a>
+          
+              <a href="/tags/codeadvent2016"><label class="label label-info">codeadvent2016</label></a>
+          
+              <a href="/tags/cakephp-plugin"><label class="label label-info">cakephp plugin</label></a>
+          
+              <a href="/tags/migrations"><label class="label label-info">migrations</label></a>
+          
+              <a href="/tags/security"><label class="label label-info">security</label></a>
+          
+              <a href="/tags/authentication"><label class="label label-info">authentication</label></a>
+          
+              <a href="/tags/cms"><label class="label label-info">CMS</label></a>
+          
+     </div>
+ </div>
+</section>
+
+<div class="row"><div class="col-md-12" id="disqus_thread"></div></div>
+<script>
+
+
+
+
+
+(function() { 
+var d = document, s = d.createElement('script');
+s.src = '//jdmaymeow-com.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+    </div> 
+
+
+    
+    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-88442341-2', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+  </body>
+</html>
+

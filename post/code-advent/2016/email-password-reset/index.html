@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="p:domain_verify" content="3a02286dee853adf9ebc8b16d3ed2569"/>
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>The Meow Blog</title>
+
+    
+    <link href="/css/bootswatch/flatly/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/css/app.css" rel="stylesheet">
+
+    <link href="/css/highlight/styles/atom-one-dark.css" rel="stylesheet">
+
+    
+    
+
+    
+    <link href="grid.css" rel="stylesheet">
+
+    
+    
+    
+
+    
+    
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="row">
+          <div class="col-md-12">
+            <a href="/"><h1 class="text-city">The Meow Blog</h1></a>
+            <p class="lead">Programing, PHP, CakePHP plugins and scripts</p>
+          </div>
+      </div>
+
+
+<section id="main">
+  <div class="row">
+      <div class="col-md-12">
+       <h2 id="title">Password reset via email</h2>
+            <p>Hi. In this part we will update our CakeAuth plugin with ability to reset forgotten password via email. To ensure this we will add new cell to our databasa for email and passwordReset string,  function for change password and config for email. So we can start.
+</p>
+
+<h2 id="users-setup">Users setup</h2>
+
+<p>First we need update users table witht new fields</p>
+
+<pre><code class="language-bash">php/cake bake migration AddPasswdResetAndEmailToUsers email:string password_reset:string -p CakeAuth
+</code></pre>
+
+<p>Open currently created migration and update password_reset to allow it to be null</p>
+
+<pre><code class="language-php">$table-&gt;addColumn('password_reset', 'string', [
+            'default' =&gt; null,
+            'limit' =&gt; 255,
+            'null' =&gt; true,
+        ]);
+</code></pre>
+
+<p>then run migrations <code>php/cake migrations migrate -p CakeAuth</code>.</p>
+
+<p>Update usersTable and add view.</p>
+
+<p>In UsersTable add</p>
+
+<pre><code class="language-php">$validator
+    -&gt;email('email')
+    -&gt;requirePresence('email', 'create')
+    -&gt;notEmpty('email');
+</code></pre>
+
+<p>In view add new field for email</p>
+
+<pre><code class="language-php">echo $this-&gt;Form-&gt;input('email');
+</code></pre>
+
+<p>You can try create new user, you can see we have new field for email and it&rsquo;s required.</p>
+
+<p><strong>Homework:</strong> Update users view and add display field for email.</p>
+
+<h2 id="password-reset-forms-and-string-generator">Password reset forms and string generator</h2>
+
+<p>Ok here we need to create new function forgottenPassword with view. Users who forget password can navigate to formular with only one inpt - email. If submited email is correct we update password_reset field for user with generated string and send link with email to another function newPassword. Ok here is forgottenPassword controller and view: Url for this will looks like <code>http://localhost:8765/cake-auth/users/forgotten-password</code></p>
+
+<p>ForgottenPassword function:</p>
+
+<pre><code class="language-php">public function forgottenPassword()
+{
+    $user = $this-&gt;Users-&gt;newEntity();
+
+    if($this-&gt;request-&gt;is('post')) {
+        $passResetUser = $this-&gt;Users
+            -&gt;findByEmail($this-&gt;request-&gt;data['email'])
+            -&gt;select(['id','password_reset'])-&gt;first();
+
+        if($passResetUser) {
+            $passResetUser-&gt;password_reset = md5($passResetUser-&gt;id . date('YmdH'));
+            $this-&gt;Users-&gt;save($passResetUser);
+            return $this-&gt;redirect(['action' =&gt; 'index']);
+        }
+    }
+
+    $this-&gt;set(compact('user'));
+    $this-&gt;set('_serialize', ['user']);
+}
+</code></pre>
+
+<p><strong>Homework:</strong> Create View</p>
+
+<p>Email sending . Update function abowe and add this rows:</p>
+
+<pre><code class="language-php">//add following lines to send string via email
+$message = 'Your reset string is: ' . $passResetUser-&gt;password_reset;
+
+$email = new Email();
+$email-&gt;to($this-&gt;request-&gt;data['email'])
+    -&gt;subject('Password reset')
+    -&gt;send($message);
+
+return $this-&gt;redirect(['action' =&gt; 'index']);
+</code></pre>
+
+<p>If user is found and string is saved into database we will send email with string to user&rsquo;s email.</p>
+
+<p><strong>Homework:</strong> Make eamil more beautifull with template.</p>
+
+<p>Now we can create new password function and form. Url loks like this <code>http://localhost:8765/cake-auth/users/new-password/&lt;password-reset-string&gt;</code></p>
+
+<p>New password function is here:</p>
+
+<pre><code class="language-php">public function newPassword($resetID = null)
+{
+    $user = $this-&gt;Users
+        -&gt;find()
+        -&gt;where(['password_reset LIKE' =&gt; $resetID])
+        -&gt;select(['id', 'password', 'password_reset'])-&gt;first();
+
+    //Default dissalow user to change passord and hide form
+    $allowPasswordChange = false;
+
+    if ($user) {
+        //when user is found allow change ans show form
+        $allowPasswordChange = true;
+    }
+
+    // when we post data update user remove password reset string and save
+    if ($this-&gt;request-&gt;is(['patch', 'post', 'put'])) {
+        $user = $this-&gt;Users-&gt;patchEntity($user, $this-&gt;request-&gt;data);
+        $user-&gt;password_reset = '';
+        if ($this-&gt;Users-&gt;save($user)) {
+            return $this-&gt;redirect(['action' =&gt; 'index']);
+        }
+    }
+
+
+    $this-&gt;set(compact('allowPasswordChange', 'user'));
+    $this-&gt;set('_serialize', ['allowPasswordChange', 'user']);
+}
+</code></pre>
+
+<p><strong>Homework:</strong> Create template for this function. Don&rsquo;t forget to implement hiding formular when user is not exist (user has not existed password reset string)</p>
+
+<p>So ok. Now if user forget password it wont need to call or email administrator, he can reset password via email.</p>
+      </div>
+  </div>
+  <div class="row">
+      <div class="col-md-12" id="tags">
+          <h4>Tagged with</h4>
+          
+              <a href="/tags/cakephp"><label class="label label-info">cakephp</label></a>
+          
+              <a href="/tags/php"><label class="label label-info">php</label></a>
+          
+              <a href="/tags/codeadvent"><label class="label label-info">codeadvent</label></a>
+          
+              <a href="/tags/authentication"><label class="label label-info">authentication</label></a>
+          
+              <a href="/tags/security"><label class="label label-info">security</label></a>
+          
+              <a href="/tags/password"><label class="label label-info">password</label></a>
+          
+              <a href="/tags/email"><label class="label label-info">email</label></a>
+          
+              <a href="/tags/cms"><label class="label label-info">CMS</label></a>
+          
+     </div>
+ </div>
+</section>
+
+<div class="row"><div class="col-md-12" id="disqus_thread"></div></div>
+<script>
+
+
+
+
+
+(function() { 
+var d = document, s = d.createElement('script');
+s.src = '//jdmaymeow-com.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+    </div> 
+
+
+    
+    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-88442341-2', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+  </body>
+</html>
+

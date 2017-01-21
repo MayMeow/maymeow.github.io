@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>The Meow Blog</title>
+    <link>https://jdmaymeow.com/tags/password/index.xml</link>
+    <description>Recent content on The Meow Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <atom:link href="https://jdmaymeow.com/tags/password/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Password reset via email</title>
+      <link>https://jdmaymeow.com/post/code-advent/2016/email-password-reset/</link>
+      <pubDate>Tue, 20 Dec 2016 13:19:16 +0100</pubDate>
+      
+      <guid>https://jdmaymeow.com/post/code-advent/2016/email-password-reset/</guid>
+      <description>&lt;p&gt;Hi. In this part we will update our CakeAuth plugin with ability to reset forgotten password via email. To ensure this we will add new cell to our databasa for email and passwordReset string,  function for change password and config for email. So we can start.
+&lt;/p&gt;
+
+&lt;h2 id=&#34;users-setup&#34;&gt;Users setup&lt;/h2&gt;
+
+&lt;p&gt;First we need update users table witht new fields&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-bash&#34;&gt;php/cake bake migration AddPasswdResetAndEmailToUsers email:string password_reset:string -p CakeAuth
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Open currently created migration and update password_reset to allow it to be null&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;$table-&amp;gt;addColumn(&#39;password_reset&#39;, &#39;string&#39;, [
+            &#39;default&#39; =&amp;gt; null,
+            &#39;limit&#39; =&amp;gt; 255,
+            &#39;null&#39; =&amp;gt; true,
+        ]);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;then run migrations &lt;code&gt;php/cake migrations migrate -p CakeAuth&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Update usersTable and add view.&lt;/p&gt;
+
+&lt;p&gt;In UsersTable add&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;$validator
+    -&amp;gt;email(&#39;email&#39;)
+    -&amp;gt;requirePresence(&#39;email&#39;, &#39;create&#39;)
+    -&amp;gt;notEmpty(&#39;email&#39;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In view add new field for email&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;echo $this-&amp;gt;Form-&amp;gt;input(&#39;email&#39;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can try create new user, you can see we have new field for email and it&amp;rsquo;s required.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Homework:&lt;/strong&gt; Update users view and add display field for email.&lt;/p&gt;
+
+&lt;h2 id=&#34;password-reset-forms-and-string-generator&#34;&gt;Password reset forms and string generator&lt;/h2&gt;
+
+&lt;p&gt;Ok here we need to create new function forgottenPassword with view. Users who forget password can navigate to formular with only one inpt - email. If submited email is correct we update password_reset field for user with generated string and send link with email to another function newPassword. Ok here is forgottenPassword controller and view: Url for this will looks like &lt;code&gt;http://localhost:8765/cake-auth/users/forgotten-password&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;ForgottenPassword function:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;public function forgottenPassword()
+{
+    $user = $this-&amp;gt;Users-&amp;gt;newEntity();
+
+    if($this-&amp;gt;request-&amp;gt;is(&#39;post&#39;)) {
+        $passResetUser = $this-&amp;gt;Users
+            -&amp;gt;findByEmail($this-&amp;gt;request-&amp;gt;data[&#39;email&#39;])
+            -&amp;gt;select([&#39;id&#39;,&#39;password_reset&#39;])-&amp;gt;first();
+
+        if($passResetUser) {
+            $passResetUser-&amp;gt;password_reset = md5($passResetUser-&amp;gt;id . date(&#39;YmdH&#39;));
+            $this-&amp;gt;Users-&amp;gt;save($passResetUser);
+            return $this-&amp;gt;redirect([&#39;action&#39; =&amp;gt; &#39;index&#39;]);
+        }
+    }
+
+    $this-&amp;gt;set(compact(&#39;user&#39;));
+    $this-&amp;gt;set(&#39;_serialize&#39;, [&#39;user&#39;]);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Homework:&lt;/strong&gt; Create View&lt;/p&gt;
+
+&lt;p&gt;Email sending . Update function abowe and add this rows:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;//add following lines to send string via email
+$message = &#39;Your reset string is: &#39; . $passResetUser-&amp;gt;password_reset;
+
+$email = new Email();
+$email-&amp;gt;to($this-&amp;gt;request-&amp;gt;data[&#39;email&#39;])
+    -&amp;gt;subject(&#39;Password reset&#39;)
+    -&amp;gt;send($message);
+
+return $this-&amp;gt;redirect([&#39;action&#39; =&amp;gt; &#39;index&#39;]);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If user is found and string is saved into database we will send email with string to user&amp;rsquo;s email.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Homework:&lt;/strong&gt; Make eamil more beautifull with template.&lt;/p&gt;
+
+&lt;p&gt;Now we can create new password function and form. Url loks like this &lt;code&gt;http://localhost:8765/cake-auth/users/new-password/&amp;lt;password-reset-string&amp;gt;&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;New password function is here:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-php&#34;&gt;public function newPassword($resetID = null)
+{
+    $user = $this-&amp;gt;Users
+        -&amp;gt;find()
+        -&amp;gt;where([&#39;password_reset LIKE&#39; =&amp;gt; $resetID])
+        -&amp;gt;select([&#39;id&#39;, &#39;password&#39;, &#39;password_reset&#39;])-&amp;gt;first();
+
+    //Default dissalow user to change passord and hide form
+    $allowPasswordChange = false;
+
+    if ($user) {
+        //when user is found allow change ans show form
+        $allowPasswordChange = true;
+    }
+
+    // when we post data update user remove password reset string and save
+    if ($this-&amp;gt;request-&amp;gt;is([&#39;patch&#39;, &#39;post&#39;, &#39;put&#39;])) {
+        $user = $this-&amp;gt;Users-&amp;gt;patchEntity($user, $this-&amp;gt;request-&amp;gt;data);
+        $user-&amp;gt;password_reset = &#39;&#39;;
+        if ($this-&amp;gt;Users-&amp;gt;save($user)) {
+            return $this-&amp;gt;redirect([&#39;action&#39; =&amp;gt; &#39;index&#39;]);
+        }
+    }
+
+
+    $this-&amp;gt;set(compact(&#39;allowPasswordChange&#39;, &#39;user&#39;));
+    $this-&amp;gt;set(&#39;_serialize&#39;, [&#39;allowPasswordChange&#39;, &#39;user&#39;]);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;Homework:&lt;/strong&gt; Create template for this function. Don&amp;rsquo;t forget to implement hiding formular when user is not exist (user has not existed password reset string)&lt;/p&gt;
+
+&lt;p&gt;So ok. Now if user forget password it wont need to call or email administrator, he can reset password via email.&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>
